@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lama | Dictionary</title>
+    <link rel="icon" type="image/x-icon" href="https://i.ibb.co/spwmPsFd/panda-bear.png">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #ff6f61;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(255, 111, 97, 0.3);
+        }
+
+        .search-box {
+            width: 100%;
+            margin-bottom: 2rem;
+        }
+
+        #searchInput {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.2em;
+            border-radius: 25px;
+            border: 2px solid #ff6f61;
+            background-color: #1a1a1a;
+            color: white;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        #searchInput:focus {
+            box-shadow: 0 0 15px rgba(255, 111, 97, 0.5);
+        }
+
+        .result-container {
+            background-color: #1a1a1a;
+            border-radius: 15px;
+            padding: 2rem;
+            color: white;
+            display: none;
+        }
+
+        .word-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .word {
+            color: #ff6f61;
+            font-size: 2em;
+            margin-bottom: 0.5rem;
+        }
+
+        .phonetic {
+            color: #888;
+            font-style: italic;
+        }
+
+        .meaning {
+            margin-bottom: 1.5rem;
+        }
+
+        .part-of-speech {
+            color: #ff6f61;
+            font-size: 1.2em;
+            margin-bottom: 0.5rem;
+        }
+
+        .definition {
+            margin-left: 1rem;
+            color: #ddd;
+        }
+
+        .example {
+            margin-left: 1rem;
+            color: #888;
+            font-style: italic;
+        }
+
+        .error {
+            color: #ff6f61;
+            text-align: center;
+            display: none;
+        }
+
+        .creator-note {
+            color: #ff6f61;
+            text-align: center;
+            margin-top: 2rem;
+            font-style: italic;
+            opacity: 0.8;
+        }
+
+        .creator-note a {
+            color: #ff6f61;
+            text-decoration: none;
+            border-bottom: 1px dotted #ff6f61;
+        }
+
+        .creator-note a:hover {
+            color: #ff8f81;
+            border-bottom-style: solid;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Lama Dictionary</h1>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Enter a word and press Enter...">
+        </div>
+        <div class="error" id="errorMessage">Word not found!</div>
+        <div class="creator-note" id="creatorNote">
+            Created with ❤️ by Juman
+            <p><br><a href="https://jeffvscblogs.github.io/home/"> >_home</a></p>
+        </div>
+        <div class="result-container" id="resultContainer">
+            <div class="word-header">
+                <div class="word" id="word"></div>
+                <div class="phonetic" id="phonetic"></div>
+            </div>
+            <div id="meanings"></div>
+        </div>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const resultContainer = document.getElementById('resultContainer');
+        const errorMessage = document.getElementById('errorMessage');
+        const creatorNote = document.getElementById('creatorNote');
+        const wordElement = document.getElementById('word');
+        const phoneticElement = document.getElementById('phonetic');
+        const meaningsElement = document.getElementById('meanings');
+
+        let timeoutId;
+
+        // Show creator note initially
+        creatorNote.style.display = 'block';
+
+        async function fetchWordMeaning(word) {
+            try {
+                const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+                if (!response.ok) throw new Error();
+                const data = await response.json();
+                
+                resultContainer.style.display = 'block';
+                errorMessage.style.display = 'none';
+                creatorNote.style.display = 'none';
+
+                const entry = data[0];
+                wordElement.textContent = entry.word;
+                phoneticElement.textContent = entry.phonetic || '';
+
+                meaningsElement.innerHTML = '';
+                entry.meanings.forEach(meaning => {
+                    const meaningDiv = document.createElement('div');
+                    meaningDiv.className = 'meaning';
+                    meaningDiv.innerHTML = `
+                        <div class="part-of-speech">${meaning.partOfSpeech}</div>
+                        ${meaning.definitions.map((def, index) => `
+                            <div class="definition">
+                                ${index + 1}. ${def.definition}
+                                ${def.example ? `<div class="example">Example: "${def.example}"</div>` : ''}
+                            </div>
+                        `).join('')}
+                    `;
+                    meaningsElement.appendChild(meaningDiv);
+                });
+
+                // Update URL without reload
+                window.history.replaceState({}, '', `?word=${encodeURIComponent(word)}`);
+            } catch (error) {
+                resultContainer.style.display = 'none';
+                errorMessage.style.display = 'block';
+                creatorNote.style.display = 'none';
+                window.history.replaceState({}, '', window.location.pathname);
+            }
+        }
+
+        // Handle Enter key press
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const word = searchInput.value.trim();
+                if (word) {
+                    fetchWordMeaning(word);
+                }
+            }
+        });
+
+        // Handle URL parameters on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const wordParam = urlParams.get('word');
+        
+            if (wordParam) {
+                searchInput.value = wordParam;
+                fetchWordMeaning(wordParam);
+            }
+        });
+
+        // Handle input with debounce and URL updates
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(timeoutId);
+            const word = e.target.value.trim();
+            
+            if (!word) {
+                window.history.replaceState({}, '', window.location.pathname);
+                resultContainer.style.display = 'none';
+                errorMessage.style.display = 'none';
+                creatorNote.style.display = 'block';
+                return;
+            }
+
+            timeoutId = setTimeout(() => {
+                fetchWordMeaning(word);
+            }, 500);
+        });
+    </script>
+</body>
+</html>
